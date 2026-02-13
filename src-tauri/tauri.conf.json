@@ -1,0 +1,66 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/core/tauri-config-schema/schema.json",
+  "productName": "Blinky",
+  "version": "0.1.0",
+  "identifier": "com.blinky.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Blinky",
+        "width": 480,
+        "height": 640,
+        "visible": false,
+        "center": true,
+        "decorations": true,
+        "resizable": true
+      },
+      {
+        "label": "overlay",
+        "title": "Blinky Overlay",
+        "url": "/overlay",
+        "width": 360,
+        "height": 80,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focus": false,
+        "shadow": false,
+        "resizable": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "shortDescription": "A gentle eye-rest reminder for the 20-20-20 rule",
+    "longDescription": "Blinky reminds you to follow the 20-20-20 rule — every 20 minutes, look at something 20 feet away for 20 seconds. Non-intrusive overlay reminders, analytics dashboard, system tray integration, and idle detection. Lightweight, free, and open-source.",
+    "homepage": "https://blinkyeyes.com",
+    "category": "Utility",
+    "linux": {
+      "deb": {
+        "section": "utils",
+        "depends": []
+      }
+    }
+  }
+}
