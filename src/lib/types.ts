@@ -19,6 +19,10 @@ export interface UserSettings {
   daily_goal: number;
   idle_pause_minutes: number;
   theme: string;
+  onboarding_completed: boolean;
+  onboarding_completed_at: number | null;
+  tooltips_seen: string;
+  first_break_completed: boolean;
 }
 
 export interface BreakRecord {
@@ -37,6 +41,14 @@ export interface DailyStats {
   total_rest_seconds: number;
   longest_streak: number;
   compliance_rate: number;
+}
+
+export interface OnboardingState {
+  onboarding_completed: boolean;
+  onboarding_completed_at: number | null;
+  tooltips_seen: string[];
+  first_break_completed: boolean;
+  is_first_day: boolean;
 }
 
 export interface AnalyticsSummary {

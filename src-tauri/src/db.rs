@@ -4,7 +4,8 @@ use rusqlite::{params, Connection, Result as SqlResult};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-const MIGRATION_SQL: &str = include_str!("../migrations/001_initial.sql");
+const MIGRATION_001_SQL: &str = include_str!("../migrations/001_initial.sql");
+const MIGRATION_002_SQL: &str = include_str!("../migrations/002_onboarding.sql");
 
 /// Returns the OS-specific path for the blinky database directory.
 pub fn get_db_dir() -> PathBuf {
@@ -40,23 +41,45 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='_migrations'")?
         .exists([])?;
 
-    if has_migrations_table {
-        let already_applied: bool = conn
-            .prepare("SELECT id FROM _migrations WHERE name = '001_initial'")?
-            .exists([])?;
-        if already_applied {
-            return Ok(());
-        }
+    let has_001 = if has_migrations_table {
+        conn.prepare("SELECT id FROM _migrations WHERE name = '001_initial'")?
+            .exists([])?
+    } else {
+        false
+    };
+
+    if !has_001 {
+        conn.execute_batch(MIGRATION_001_SQL)?;
+        conn.execute(
+            "INSERT INTO _migrations (name) VALUES (?1)",
+            params!["001_initial"],
+        )?;
     }
 
-    // Run the full migration SQL
-    conn.execute_batch(MIGRATION_SQL)?;
+    // Migration 002: onboarding columns
+    let has_002 = conn
+        .prepare("SELECT id FROM _migrations WHERE name = '002_onboarding'")?
+        .exists([])?;
 
-    // Record that we applied it
-    conn.execute(
-        "INSERT INTO _migrations (name) VALUES (?1)",
-        params!["001_initial"],
-    )?;
+    if !has_002 {
+        conn.execute_batch(MIGRATION_002_SQL)?;
+        conn.execute(
+            "INSERT INTO _migrations (name) VALUES (?1)",
+            params!["002_onboarding"],
+        )?;
+
+        // Auto-complete onboarding for existing users who already have break records.
+        let has_breaks: bool = conn
+            .prepare("SELECT id FROM break_records LIMIT 1")?
+            .exists([])?;
+        if has_breaks {
+            let now_ms = chrono::Utc::now().timestamp_millis();
+            conn.execute(
+                "UPDATE settings SET onboarding_completed = 1, first_break_completed = 1, onboarding_completed_at = ?1 WHERE id = 1",
+                params![now_ms],
+            )?;
+        }
+    }
 
     Ok(())
 }
@@ -91,7 +114,11 @@ pub fn update_break_completion(
 }
 
 /// Get break records, paginated, newest first.
-pub fn get_break_records(conn: &Connection, limit: u32, offset: u32) -> SqlResult<Vec<BreakRecord>> {
+pub fn get_break_records(
+    conn: &Connection,
+    limit: u32,
+    offset: u32,
+) -> SqlResult<Vec<BreakRecord>> {
     let mut stmt = conn.prepare(
         "SELECT id, started_at, duration_seconds, completed, skipped, preceding_work_seconds
          FROM break_records ORDER BY started_at DESC LIMIT ?1 OFFSET ?2",
@@ -114,7 +141,8 @@ pub fn load_settings(conn: &Connection) -> SqlResult<UserSettings> {
     conn.query_row(
         "SELECT work_interval_minutes, break_duration_seconds, sound_enabled, sound_volume,
                 notification_enabled, overlay_enabled, launch_at_login, daily_goal,
-                idle_pause_minutes, theme
+                idle_pause_minutes, theme,
+                onboarding_completed, onboarding_completed_at, tooltips_seen, first_break_completed
          FROM settings WHERE id = 1",
         [],
         |row| {
@@ -129,6 +157,10 @@ pub fn load_settings(conn: &Connection) -> SqlResult<UserSettings> {
                 daily_goal: row.get::<_, i32>(7)? as u32,
                 idle_pause_minutes: row.get::<_, i32>(8)? as u32,
                 theme: row.get(9)?,
+                onboarding_completed: row.get::<_, i32>(10)? != 0,
+                onboarding_completed_at: row.get::<_, Option<i64>>(11)?.map(|v| v as u64),
+                tooltips_seen: row.get(12)?,
+                first_break_completed: row.get::<_, i32>(13)? != 0,
             })
         },
     )
@@ -147,7 +179,11 @@ pub fn save_settings(conn: &Connection, s: &UserSettings) -> SqlResult<()> {
             launch_at_login = ?7,
             daily_goal = ?8,
             idle_pause_minutes = ?9,
-            theme = ?10
+            theme = ?10,
+            onboarding_completed = ?11,
+            onboarding_completed_at = ?12,
+            tooltips_seen = ?13,
+            first_break_completed = ?14
          WHERE id = 1",
         params![
             s.work_interval_minutes as i32,
@@ -160,6 +196,10 @@ pub fn save_settings(conn: &Connection, s: &UserSettings) -> SqlResult<()> {
             s.daily_goal as i32,
             s.idle_pause_minutes as i32,
             s.theme,
+            s.onboarding_completed as i32,
+            s.onboarding_completed_at.map(|v| v as i64),
+            s.tooltips_seen,
+            s.first_break_completed as i32,
         ],
     )?;
     Ok(())
@@ -305,10 +345,8 @@ pub fn get_daily_stats_range(
         .collect::<SqlResult<Vec<_>>>()?;
 
     // Build a map for O(1) lookup
-    let cache_map: std::collections::HashMap<String, DailyStats> = cached
-        .into_iter()
-        .map(|s| (s.date.clone(), s))
-        .collect();
+    let cache_map: std::collections::HashMap<String, DailyStats> =
+        cached.into_iter().map(|s| (s.date.clone(), s)).collect();
 
     // Fill in every day in the range
     let mut result = Vec::new();
@@ -393,11 +431,17 @@ pub fn export_to_csv(conn: &Connection) -> SqlResult<String> {
         })?
         .collect::<SqlResult<Vec<_>>>()?;
 
-    let mut csv = String::from("id,started_at,duration_seconds,completed,skipped,preceding_work_seconds\n");
+    let mut csv =
+        String::from("id,started_at,duration_seconds,completed,skipped,preceding_work_seconds\n");
     for r in &records {
         csv.push_str(&format!(
             "{},{},{},{},{},{}\n",
-            r.id, r.started_at, r.duration_seconds, r.completed, r.skipped, r.preceding_work_seconds
+            r.id,
+            r.started_at,
+            r.duration_seconds,
+            r.completed,
+            r.skipped,
+            r.preceding_work_seconds
         ));
     }
 
@@ -423,8 +467,14 @@ mod tests {
         let settings = load_settings(&conn).unwrap();
         let defaults = UserSettings::default();
 
-        assert_eq!(settings.work_interval_minutes, defaults.work_interval_minutes);
-        assert_eq!(settings.break_duration_seconds, defaults.break_duration_seconds);
+        assert_eq!(
+            settings.work_interval_minutes,
+            defaults.work_interval_minutes
+        );
+        assert_eq!(
+            settings.break_duration_seconds,
+            defaults.break_duration_seconds
+        );
         assert_eq!(settings.sound_enabled, defaults.sound_enabled);
         assert!((settings.sound_volume - defaults.sound_volume).abs() < 0.01);
         assert_eq!(settings.notification_enabled, defaults.notification_enabled);
@@ -609,7 +659,9 @@ mod tests {
     fn test_daily_stats_range_zero_fills() {
         let conn = setup_test_db();
         let today = Utc::now().date_naive();
-        let from = (today - chrono::Duration::days(6)).format("%Y-%m-%d").to_string();
+        let from = (today - chrono::Duration::days(6))
+            .format("%Y-%m-%d")
+            .to_string();
         let to = today.format("%Y-%m-%d").to_string();
 
         let range = get_daily_stats_range(&conn, &from, &to).unwrap();

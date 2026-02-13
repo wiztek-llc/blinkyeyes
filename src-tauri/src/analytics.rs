@@ -63,9 +63,8 @@ fn compute_current_streak(
     let today_met_goal = today_stats.breaks_completed >= daily_goal;
 
     // Load all cached daily stats, ordered by date descending
-    let mut stmt = conn.prepare(
-        "SELECT date, breaks_completed FROM daily_stats_cache ORDER BY date DESC",
-    )?;
+    let mut stmt =
+        conn.prepare("SELECT date, breaks_completed FROM daily_stats_cache ORDER BY date DESC")?;
 
     let entries: Vec<(String, u32)> = stmt
         .query_map([], |row| {
@@ -113,9 +112,8 @@ fn compute_current_streak(
 /// Scan all daily_stats_cache entries to find the longest run of consecutive days
 /// where breaks_completed >= daily_goal.
 fn compute_best_streak(conn: &Connection, daily_goal: u32) -> SqlResult<u32> {
-    let mut stmt = conn.prepare(
-        "SELECT date, breaks_completed FROM daily_stats_cache ORDER BY date ASC",
-    )?;
+    let mut stmt =
+        conn.prepare("SELECT date, breaks_completed FROM daily_stats_cache ORDER BY date ASC")?;
 
     let entries: Vec<(NaiveDate, u32)> = stmt
         .query_map([], |row| {
@@ -337,7 +335,11 @@ mod tests {
 
         // 3 days ago: met goal
         let d3 = today - chrono::Duration::days(3);
-        let base3 = d3.and_hms_opt(10, 0, 0).unwrap().and_utc().timestamp_millis() as u64;
+        let base3 = d3
+            .and_hms_opt(10, 0, 0)
+            .unwrap()
+            .and_utc()
+            .timestamp_millis() as u64;
         let id = insert_break_record(&conn, base3, 1200).unwrap();
         update_break_completion(&conn, id, 20, true, false).unwrap();
         db::recompute_daily_stats(&conn, &d3.format("%Y-%m-%d").to_string()).unwrap();
@@ -348,7 +350,11 @@ mod tests {
 
         // Yesterday: met goal
         let d1 = today - chrono::Duration::days(1);
-        let base1 = d1.and_hms_opt(10, 0, 0).unwrap().and_utc().timestamp_millis() as u64;
+        let base1 = d1
+            .and_hms_opt(10, 0, 0)
+            .unwrap()
+            .and_utc()
+            .timestamp_millis() as u64;
         let id = insert_break_record(&conn, base1, 1200).unwrap();
         update_break_completion(&conn, id, 20, true, false).unwrap();
         db::recompute_daily_stats(&conn, &d1.format("%Y-%m-%d").to_string()).unwrap();
@@ -368,7 +374,11 @@ mod tests {
         // Create a 5-day streak ending 10 days ago
         for days_ago in 10..=14 {
             let date = today - chrono::Duration::days(days_ago);
-            let base = date.and_hms_opt(10, 0, 0).unwrap().and_utc().timestamp_millis() as u64;
+            let base = date
+                .and_hms_opt(10, 0, 0)
+                .unwrap()
+                .and_utc()
+                .timestamp_millis() as u64;
             let id = insert_break_record(&conn, base, 1200).unwrap();
             update_break_completion(&conn, id, 20, true, false).unwrap();
             db::recompute_daily_stats(&conn, &date.format("%Y-%m-%d").to_string()).unwrap();
@@ -377,7 +387,11 @@ mod tests {
         // Create a 2-day streak ending yesterday
         for days_ago in 1..=2 {
             let date = today - chrono::Duration::days(days_ago);
-            let base = date.and_hms_opt(10, 0, 0).unwrap().and_utc().timestamp_millis() as u64;
+            let base = date
+                .and_hms_opt(10, 0, 0)
+                .unwrap()
+                .and_utc()
+                .timestamp_millis() as u64;
             let id = insert_break_record(&conn, base, 1200).unwrap();
             update_break_completion(&conn, id, 20, true, false).unwrap();
             db::recompute_daily_stats(&conn, &date.format("%Y-%m-%d").to_string()).unwrap();
@@ -421,7 +435,11 @@ mod tests {
         // Insert 1000+ records spread across 30 days
         for days_ago in 0..30 {
             let date = today - chrono::Duration::days(days_ago);
-            let base = date.and_hms_opt(8, 0, 0).unwrap().and_utc().timestamp_millis() as u64;
+            let base = date
+                .and_hms_opt(8, 0, 0)
+                .unwrap()
+                .and_utc()
+                .timestamp_millis() as u64;
 
             for j in 0..35 {
                 let id = insert_break_record(&conn, base + j * 1_200_000, 1200).unwrap();
@@ -442,7 +460,11 @@ mod tests {
         let summary = build_analytics_summary(&conn, 24).unwrap();
         let elapsed = start.elapsed();
 
-        assert!(elapsed.as_millis() < 50, "Took {}ms, expected <50ms", elapsed.as_millis());
+        assert!(
+            elapsed.as_millis() < 50,
+            "Took {}ms, expected <50ms",
+            elapsed.as_millis()
+        );
         assert_eq!(summary.last_7_days.len(), 7);
         assert_eq!(summary.last_30_days.len(), 30);
         assert!(summary.lifetime_breaks > 0);
@@ -466,12 +488,20 @@ mod tests {
         let d1 = today - chrono::Duration::days(5);
         let d3 = today - chrono::Duration::days(3);
 
-        let base1 = d1.and_hms_opt(10, 0, 0).unwrap().and_utc().timestamp_millis() as u64;
+        let base1 = d1
+            .and_hms_opt(10, 0, 0)
+            .unwrap()
+            .and_utc()
+            .timestamp_millis() as u64;
         let id = insert_break_record(&conn, base1, 1200).unwrap();
         update_break_completion(&conn, id, 20, true, false).unwrap();
         db::recompute_daily_stats(&conn, &d1.format("%Y-%m-%d").to_string()).unwrap();
 
-        let base3 = d3.and_hms_opt(10, 0, 0).unwrap().and_utc().timestamp_millis() as u64;
+        let base3 = d3
+            .and_hms_opt(10, 0, 0)
+            .unwrap()
+            .and_utc()
+            .timestamp_millis() as u64;
         let id = insert_break_record(&conn, base3, 1200).unwrap();
         update_break_completion(&conn, id, 20, true, false).unwrap();
         db::recompute_daily_stats(&conn, &d3.format("%Y-%m-%d").to_string()).unwrap();

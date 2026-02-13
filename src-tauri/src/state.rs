@@ -31,6 +31,10 @@ pub struct UserSettings {
     pub daily_goal: u32,
     pub idle_pause_minutes: u32,
     pub theme: String,
+    pub onboarding_completed: bool,
+    pub onboarding_completed_at: Option<u64>,
+    pub tooltips_seen: String,
+    pub first_break_completed: bool,
 }
 
 impl Default for UserSettings {
@@ -46,6 +50,10 @@ impl Default for UserSettings {
             daily_goal: 24,
             idle_pause_minutes: 5,
             theme: "system".to_string(),
+            onboarding_completed: false,
+            onboarding_completed_at: None,
+            tooltips_seen: "[]".to_string(),
+            first_break_completed: false,
         }
     }
 }
@@ -92,6 +100,15 @@ pub struct AnalyticsSummary {
     pub best_day_streak: u32,
     pub lifetime_breaks: u64,
     pub lifetime_rest_seconds: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OnboardingState {
+    pub onboarding_completed: bool,
+    pub onboarding_completed_at: Option<u64>,
+    pub tooltips_seen: Vec<String>,
+    pub first_break_completed: bool,
+    pub is_first_day: bool,
 }
 
 /// Internal timer bookkeeping — not exposed via IPC.

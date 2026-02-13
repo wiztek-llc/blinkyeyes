@@ -5,6 +5,7 @@ import type {
   BreakRecord,
   DailyStats,
   AnalyticsSummary,
+  OnboardingState,
 } from "./types";
 
 export async function getTimerState(): Promise<TimerState> {
@@ -61,4 +62,28 @@ export async function exportDataCsv(): Promise<string> {
 
 export async function clearAllData(): Promise<boolean> {
   return invoke("clear_all_data");
+}
+
+// --- Onboarding commands ---
+
+export async function getOnboardingState(): Promise<OnboardingState> {
+  return invoke("get_onboarding_state");
+}
+
+export async function completeOnboarding(): Promise<OnboardingState> {
+  return invoke("complete_onboarding");
+}
+
+export async function markTooltipSeen(
+  tooltipId: string
+): Promise<string[]> {
+  return invoke("mark_tooltip_seen", { tooltipId });
+}
+
+export async function triggerDemoBreak(): Promise<boolean> {
+  return invoke("trigger_demo_break");
+}
+
+export async function resetOnboarding(): Promise<boolean> {
+  return invoke("reset_onboarding");
 }

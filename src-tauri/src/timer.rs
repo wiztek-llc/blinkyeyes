@@ -72,16 +72,22 @@ fn tick(app: &AppHandle, idle_check_counter: &mut u32) {
                 timer.seconds_remaining = remaining;
 
                 if remaining == 0 {
-                    // Breaking → Working (complete)
+                    // Breaking → Working (or Paused if onboarding not complete)
                     let break_record_id = internal.current_break_record_id.take();
                     let actual_duration = timer.phase_duration as u32;
+                    let is_demo = !settings.onboarding_completed;
 
                     let work_duration = settings.work_interval_minutes as u64 * 60;
-                    timer.phase = TimerPhase::Working;
+                    if is_demo {
+                        // Demo break during onboarding — return to Paused
+                        timer.phase = TimerPhase::Paused;
+                    } else {
+                        timer.phase = TimerPhase::Working;
+                        timer.breaks_completed_today += 1;
+                    }
                     timer.phase_duration = work_duration;
                     timer.seconds_remaining = work_duration;
                     timer.phase_started_at = now_ms;
-                    timer.breaks_completed_today += 1;
 
                     internal.work_started_at = now_ms;
 
@@ -143,17 +149,35 @@ fn tick(app: &AppHandle, idle_check_counter: &mut u32) {
             actual_duration,
             overlay_enabled,
         } => {
-            // Finalize break record in DB
+            // Finalize break record in DB (only for real breaks, not demo)
             if let Some(id) = break_record_id {
                 if let Some(db_conn) = try_state::<DbConnection>(app) {
                     let db = db_conn.0.lock().unwrap();
-                    let _ = crate::db::update_break_completion(&db, id, actual_duration, true, false);
+                    let _ =
+                        crate::db::update_break_completion(&db, id, actual_duration, true, false);
                     let today = Utc::now().format("%Y-%m-%d").to_string();
                     let _ = crate::db::recompute_daily_stats(&db, &today);
                 }
             }
 
-            // Chime is played by the frontend on `break-completed` event
+            // Check if this was the first real break (not a demo break)
+            {
+                let state = app.state::<AppState>();
+                let mut settings = state.settings.lock().unwrap();
+                if settings.onboarding_completed
+                    && !settings.first_break_completed
+                    && break_record_id.is_some()
+                {
+                    settings.first_break_completed = true;
+                    if let Some(db_conn) = try_state::<DbConnection>(app) {
+                        let db = db_conn.0.lock().unwrap();
+                        let _ = crate::db::save_settings(&db, &settings);
+                    }
+                    drop(settings);
+                    let _ = app.emit("first-break-celebrated", ());
+                }
+            }
+
             if overlay_enabled {
                 crate::overlay::hide_overlay(app);
             }

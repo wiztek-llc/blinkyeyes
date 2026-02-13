@@ -8,6 +8,7 @@ mod notifications;
 mod overlay;
 mod settings;
 pub mod state;
+mod onboarding;
 mod timer;
 mod tray;
 
@@ -29,8 +30,7 @@ pub fn run() {
             std::fs::create_dir_all(&db_dir).expect("Failed to create DB directory");
             let db_path = db_dir.join("blinky.db");
             let db_path_str = db_path.to_string_lossy().to_string();
-            let db_mutex =
-                db::init_db(&db_path_str).expect("Failed to initialize database");
+            let db_mutex = db::init_db(&db_path_str).expect("Failed to initialize database");
 
             // Load settings from DB
             let settings = {
@@ -47,8 +47,15 @@ pub fn run() {
             let now_ms = chrono::Utc::now().timestamp_millis() as u64;
             let work_duration = settings.work_interval_minutes as u64 * 60;
 
+            // If onboarding hasn't been completed, start in Paused phase
+            let initial_phase = if settings.onboarding_completed {
+                TimerPhase::Working
+            } else {
+                TimerPhase::Paused
+            };
+
             let timer_state = TimerState {
-                phase: TimerPhase::Working,
+                phase: initial_phase,
                 seconds_remaining: work_duration,
                 phase_duration: work_duration,
                 phase_started_at: now_ms,
@@ -72,8 +79,7 @@ pub fn run() {
             app.manage(DbConnection(db_mutex));
 
             // Create the system tray
-            let tray_state = tray::create_tray(app.handle())
-                .expect("Failed to create system tray");
+            let tray_state = tray::create_tray(app.handle()).expect("Failed to create system tray");
             app.manage(tray_state);
 
             // Start the background timer loop
@@ -94,6 +100,11 @@ pub fn run() {
             commands::get_daily_stats_range,
             commands::export_data_csv,
             commands::clear_all_data,
+            commands::get_onboarding_state,
+            commands::complete_onboarding,
+            commands::mark_tooltip_seen,
+            commands::trigger_demo_break,
+            commands::reset_onboarding,
         ])
         .on_window_event(|window, event| {
             // Hide windows instead of closing — keep app running in tray

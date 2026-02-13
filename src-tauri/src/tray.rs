@@ -30,8 +30,7 @@ fn format_time(seconds: u64) -> String {
 /// Returns `TrayMenuState` to be `.manage()`d by Tauri.
 pub fn create_tray(app: &AppHandle) -> Result<TrayMenuState, Box<dyn std::error::Error>> {
     // Build menu items
-    let status_item =
-        MenuItem::with_id(app, "status", "Next break in 20:00", false, None::<&str>)?;
+    let status_item = MenuItem::with_id(app, "status", "Next break in 20:00", false, None::<&str>)?;
     let pause_item = MenuItem::with_id(app, "pause_resume", "Pause", true, None::<&str>)?;
     let skip_item = MenuItem::with_id(app, "skip_break", "Skip Break", true, None::<&str>)?;
     let reset_item = MenuItem::with_id(app, "reset_timer", "Reset Timer", true, None::<&str>)?;
