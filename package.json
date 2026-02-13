@@ -1,6 +1,6 @@
 {
   "name": "blinky",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "description": "A gentle eye-rest reminder for the 20-20-20 rule",
