@@ -14,3 +14,104 @@
 @utility animate-overlay-enter {
   animation: overlay-enter 0.35s ease-out both;
 }
+
+/* Onboarding animations */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@utility animate-fade-in {
+  animation: fade-in 0.4s ease-out both;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@utility animate-slide-in {
+  animation: slide-in 0.3s ease-out both;
+}
+
+@keyframes slide-out-left {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+}
+
+@utility animate-slide-out-left {
+  animation: slide-out-left 0.3s ease-out both;
+}
+
+@keyframes slide-out-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
+@utility animate-slide-out-right {
+  animation: slide-out-right 0.3s ease-out both;
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@utility animate-fade-out {
+  animation: fade-out 0.3s ease-out both;
+}
+
+/* Staggered card entrance for onboarding */
+
+@keyframes stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-stagger-in-1 {
+  animation: stagger-in 0.4s ease-out both;
+  animation-delay: 0ms;
+}
+
+@utility animate-stagger-in-2 {
+  animation: stagger-in 0.4s ease-out both;
+  animation-delay: 150ms;
+}
+
+@utility animate-stagger-in-3 {
+  animation: stagger-in 0.4s ease-out both;
+  animation-delay: 300ms;
+}

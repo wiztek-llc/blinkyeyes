@@ -53,23 +53,23 @@ mod platform {
 
     fn load_fns() -> Option<IdleFns> {
         unsafe {
-            let x11 = dlopen(b"libX11.so.6\0".as_ptr().cast(), RTLD_LAZY);
+            let x11 = dlopen(c"libX11.so.6".as_ptr(), RTLD_LAZY);
             if x11.is_null() {
                 return None;
             }
 
-            let xss = dlopen(b"libXss.so.1\0".as_ptr().cast(), RTLD_LAZY);
+            let xss = dlopen(c"libXss.so.1".as_ptr(), RTLD_LAZY);
             if xss.is_null() {
                 return None;
             }
 
             let ptrs = [
-                dlsym(x11, b"XOpenDisplay\0".as_ptr().cast()),
-                dlsym(x11, b"XDefaultRootWindow\0".as_ptr().cast()),
-                dlsym(x11, b"XCloseDisplay\0".as_ptr().cast()),
-                dlsym(x11, b"XFree\0".as_ptr().cast()),
-                dlsym(xss, b"XScreenSaverAllocInfo\0".as_ptr().cast()),
-                dlsym(xss, b"XScreenSaverQueryInfo\0".as_ptr().cast()),
+                dlsym(x11, c"XOpenDisplay".as_ptr()),
+                dlsym(x11, c"XDefaultRootWindow".as_ptr()),
+                dlsym(x11, c"XCloseDisplay".as_ptr()),
+                dlsym(x11, c"XFree".as_ptr()),
+                dlsym(xss, c"XScreenSaverAllocInfo".as_ptr()),
+                dlsym(xss, c"XScreenSaverQueryInfo".as_ptr()),
             ];
 
             if ptrs.iter().any(|p| p.is_null()) {
@@ -77,12 +77,14 @@ mod platform {
             }
 
             Some(IdleFns {
-                open_display: std::mem::transmute(ptrs[0]),
-                default_root_window: std::mem::transmute(ptrs[1]),
-                close_display: std::mem::transmute(ptrs[2]),
-                x_free: std::mem::transmute(ptrs[3]),
-                alloc_info: std::mem::transmute(ptrs[4]),
-                query_info: std::mem::transmute(ptrs[5]),
+                open_display: std::mem::transmute::<*mut c_void, OpenDisplayFn>(ptrs[0]),
+                default_root_window: std::mem::transmute::<*mut c_void, DefaultRootWindowFn>(
+                    ptrs[1],
+                ),
+                close_display: std::mem::transmute::<*mut c_void, CloseDisplayFn>(ptrs[2]),
+                x_free: std::mem::transmute::<*mut c_void, XFreeFn>(ptrs[3]),
+                alloc_info: std::mem::transmute::<*mut c_void, AllocInfoFn>(ptrs[4]),
+                query_info: std::mem::transmute::<*mut c_void, QueryInfoFn>(ptrs[5]),
             })
         }
     }

@@ -28,6 +28,7 @@ pub fn init_db(db_path: &str) -> SqlResult<Mutex<Connection>> {
 }
 
 /// Same as init_db but takes a Connection directly (for testing with :memory:).
+#[cfg(test)]
 pub fn init_db_conn(conn: &Connection) -> SqlResult<()> {
     conn.execute_batch("PRAGMA journal_mode=WAL;")?;
     conn.execute_batch("PRAGMA foreign_keys=ON;")?;
@@ -372,12 +373,12 @@ pub fn count_breaks_today(conn: &Connection) -> SqlResult<u32> {
         .and_hms_opt(0, 0, 0)
         .unwrap()
         .and_utc()
-        .timestamp_millis() as i64;
+        .timestamp_millis();
     let end_of_day = parsed
         .and_hms_opt(23, 59, 59)
         .unwrap()
         .and_utc()
-        .timestamp_millis() as i64
+        .timestamp_millis()
         + 999;
 
     let count: i32 = conn.query_row(

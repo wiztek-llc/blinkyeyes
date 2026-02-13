@@ -12,7 +12,3 @@ pub fn set_autostart(app: &AppHandle, enabled: bool) {
         eprintln!("[autostart] Failed to set autostart: {}", e);
     }
 }
-
-pub fn is_autostart_enabled(app: &AppHandle) -> bool {
-    app.autolaunch().is_enabled().unwrap_or(false)
-}

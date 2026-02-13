@@ -1,11 +1,13 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Routes, Route, NavLink, useLocation } from "react-router-dom";
 import { listen } from "@tauri-apps/api/event";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
+import Onboarding from "./pages/Onboarding";
 import MiniOverlay from "./components/MiniOverlay";
 import type { UserSettings } from "./lib/types";
 import { getSettings } from "./lib/commands";
+import { useOnboarding } from "./hooks/useOnboarding";
 import { useChime } from "./hooks/useChime";
 
 function applyTheme(theme: string) {
@@ -96,6 +98,53 @@ function AppShell() {
   );
 }
 
+function MainApp() {
+  const { state: onboardingState, loading, completeOnboarding } = useOnboarding();
+  const [transitioning, setTransitioning] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
+
+  // Apply theme as early as possible
+  useEffect(() => {
+    getSettings()
+      .then((s) => applyTheme(s.theme))
+      .catch(console.error);
+  }, []);
+
+  const handleOnboardingComplete = useCallback(async () => {
+    setTransitioning(true);
+    await completeOnboarding();
+    // Allow the fade-out animation to play before switching views
+    setTimeout(() => {
+      setShowDashboard(true);
+      setTransitioning(false);
+    }, 300);
+  }, [completeOnboarding]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center animate-fade-in">
+        <span className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+          Blinky
+        </span>
+      </div>
+    );
+  }
+
+  if (onboardingState && !onboardingState.onboarding_completed && !showDashboard) {
+    return (
+      <div className={transitioning ? "animate-fade-out" : ""}>
+        <Onboarding onComplete={handleOnboardingComplete} />
+      </div>
+    );
+  }
+
+  return (
+    <div className={showDashboard && !transitioning ? "animate-fade-in" : ""}>
+      <AppShell />
+    </div>
+  );
+}
+
 function App() {
   const location = useLocation();
 
@@ -103,7 +152,7 @@ function App() {
     return <MiniOverlay />;
   }
 
-  return <AppShell />;
+  return <MainApp />;
 }
 
 export default App;

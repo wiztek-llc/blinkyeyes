@@ -319,12 +319,7 @@ pub fn reset(app: &AppHandle) -> TimerState {
     let break_record_id = if timer.phase == TimerPhase::Breaking {
         let elapsed = ((now_ms.saturating_sub(timer.phase_started_at)) / 1000) as u32;
         let id = internal.current_break_record_id.take();
-        if let Some(id) = id {
-            // Store elapsed for DB update after dropping locks
-            Some((id, elapsed))
-        } else {
-            None
-        }
+        id.map(|id| (id, elapsed))
     } else {
         internal.current_break_record_id.take();
         None

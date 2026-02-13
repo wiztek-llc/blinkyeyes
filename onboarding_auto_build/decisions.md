@@ -15,3 +15,17 @@
 - **`tooltips_seen` stored as JSON string in UserSettings, parsed in OnboardingState**: Following the spec exactly — the DB and UserSettings carry the raw JSON string `"[]"`. The `OnboardingState` struct (returned to frontend) has `Vec<String>`. Conversion happens in `build_onboarding_state()`. This avoids JSON parsing on every settings load/save.
 
 - **`mark_tooltip_seen` IPC parameter uses camelCase `tooltipId`**: Tauri v2 auto-converts snake_case command parameter names to camelCase for the frontend. The TypeScript wrapper uses `tooltipId` which maps to the Rust parameter `tooltip_id`.
+
+## Block 1: Welcome Wizard Shell & Routing
+
+- **`MainApp` wrapper for onboarding routing**: Rather than modifying `AppShell` directly, added a `MainApp` component that wraps `AppShell` and `Onboarding`. This keeps the existing dashboard/settings shell completely untouched — the conditional logic is a clean layer on top.
+
+- **Single-element step transitions over dual-element**: The spec described simultaneous slide-out/slide-in of two elements. Used a simpler single-element approach: fade/slide the current step out (300ms timeout), then swap the component and let it animate in. This avoids the complexity of managing two absolutely-positioned elements, CSS z-index conflicts, and height synchronization between steps. The visual result is smooth directional movement that matches the spec's intent.
+
+- **`onComplete` prop pattern**: The `Onboarding` page receives an `onComplete` callback from `MainApp` instead of directly calling `completeOnboarding`. This keeps the wizard component focused on UI (step navigation, animations) while `MainApp` handles the IPC call and the wizard-to-dashboard transition. Later blocks that fill in ReadyStep will call `onComplete` from the "Start Protecting Your Eyes" button.
+
+- **Theme applied in both `MainApp` and `AppShell`**: `MainApp` calls `getSettings().then(applyTheme)` on mount so the correct theme is active even during the onboarding wizard. `AppShell` also applies theme (for the settings-changed event listener). This means theme is correct regardless of which view renders first.
+
+- **CSS animations use Tailwind v4 `@utility` directives**: All onboarding animations (`animate-fade-in`, `animate-slide-out-left`, etc.) follow the same pattern as the existing `animate-overlay-enter` — `@keyframes` + `@utility`. This is the required pattern for Tailwind v4 with `@tailwindcss/vite`.
+
+- **Placeholder steps accept full props interface now**: All four step components accept `{ onNext, onBack, settings, onUpdateSettings }` even though placeholders don't use all of them. This ensures Blocks 2, 3, and 4 can fill in step content without changing the Onboarding page's prop-passing code.
