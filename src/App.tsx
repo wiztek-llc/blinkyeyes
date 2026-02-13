@@ -26,7 +26,7 @@ function applyTheme(theme: string) {
   }
 }
 
-function AppShell() {
+function AppShell({ onResetOnboarding }: { onResetOnboarding: () => Promise<void> }) {
   useChime();
 
   useEffect(() => {
@@ -91,7 +91,7 @@ function AppShell() {
       <main className="p-5">
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings" element={<Settings onResetOnboarding={onResetOnboarding} />} />
         </Routes>
       </main>
     </div>
@@ -99,9 +99,10 @@ function AppShell() {
 }
 
 function MainApp() {
-  const { state: onboardingState, loading, completeOnboarding } = useOnboarding();
+  const { state: onboardingState, loading, completeOnboarding, resetOnboarding } = useOnboarding();
   const [transitioning, setTransitioning] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(false);
+  // Tracks whether we just completed onboarding (for fade-in animation)
+  const [justCompleted, setJustCompleted] = useState(false);
 
   // Apply theme as early as possible
   useEffect(() => {
@@ -115,10 +116,19 @@ function MainApp() {
     await completeOnboarding();
     // Allow the fade-out animation to play before switching views
     setTimeout(() => {
-      setShowDashboard(true);
+      setJustCompleted(true);
       setTransitioning(false);
     }, 300);
   }, [completeOnboarding]);
+
+  const handleResetOnboarding = useCallback(async () => {
+    setTransitioning(true);
+    await resetOnboarding();
+    setTimeout(() => {
+      setJustCompleted(false);
+      setTransitioning(false);
+    }, 300);
+  }, [resetOnboarding]);
 
   if (loading) {
     return (
@@ -130,17 +140,19 @@ function MainApp() {
     );
   }
 
-  if (onboardingState && !onboardingState.onboarding_completed && !showDashboard) {
+  const onboardingCompleted = onboardingState?.onboarding_completed ?? false;
+
+  if (!onboardingCompleted) {
     return (
-      <div className={transitioning ? "animate-fade-out" : ""}>
+      <div className={transitioning ? "animate-fade-out" : "animate-fade-in"}>
         <Onboarding onComplete={handleOnboardingComplete} />
       </div>
     );
   }
 
   return (
-    <div className={showDashboard && !transitioning ? "animate-fade-in" : ""}>
-      <AppShell />
+    <div className={justCompleted && !transitioning ? "animate-fade-in" : transitioning ? "animate-fade-out" : ""}>
+      <AppShell onResetOnboarding={handleResetOnboarding} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { UserSettings } from "../lib/types";
+import { getSettings, updateSettings as updateSettingsCmd } from "../lib/commands";
 import WelcomeStep from "../components/onboarding/WelcomeStep";
 import SetupStep from "../components/onboarding/SetupStep";
 import PreviewStep from "../components/onboarding/PreviewStep";
@@ -21,6 +22,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   const [accumulatedSettings, setAccumulatedSettings] = useState<Partial<UserSettings>>({});
   const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [animating, setAnimating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const goNext = useCallback(() => {
@@ -43,9 +45,39 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     }, 300);
   }, [animating, currentStep]);
 
-  const updateSettings = useCallback((partial: Partial<UserSettings>) => {
+  const goToStep = useCallback(
+    (step: number) => {
+      if (animating || step < 0 || step >= STEPS.length || step === currentStep) return;
+      setDirection(step < currentStep ? "back" : "forward");
+      setAnimating(true);
+      setTimeout(() => {
+        setCurrentStep(step);
+        setAnimating(false);
+      }, 300);
+    },
+    [animating, currentStep],
+  );
+
+  const handleUpdateSettings = useCallback((partial: Partial<UserSettings>) => {
     setAccumulatedSettings((prev) => ({ ...prev, ...partial }));
   }, []);
+
+  const handleComplete = useCallback(async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      // Merge accumulated settings onto current settings and save
+      const current = await getSettings();
+      const merged = { ...current, ...accumulatedSettings };
+      await updateSettingsCmd(merged);
+      // Then complete onboarding (starts timer, transitions to dashboard)
+      await onComplete();
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, accumulatedSettings, onComplete]);
 
   const { Component: StepComponent } = STEPS[currentStep];
 
@@ -89,10 +121,11 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       <div ref={containerRef} className="flex-1 overflow-hidden relative">
         <div className={`h-full ${slideClass}`}>
           <StepComponent
-            onNext={currentStep === STEPS.length - 1 ? onComplete : goNext}
+            onNext={currentStep === STEPS.length - 1 ? handleComplete : goNext}
             onBack={goBack}
             settings={accumulatedSettings}
-            onUpdateSettings={updateSettings}
+            onUpdateSettings={handleUpdateSettings}
+            onGoToStep={goToStep}
           />
         </div>
       </div>

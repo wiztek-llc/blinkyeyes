@@ -31,16 +31,10 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Cache Cargo registry and build
-        uses: actions/cache@v4
+      - name: Cache Cargo build
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          workspaces: src-tauri
 
       - name: Install npm dependencies
         run: npm ci
@@ -59,7 +53,3 @@ jobs:
       - name: Rust tests
         working-directory: src-tauri
         run: cargo test
-
-      - name: Rust compilation check
-        working-directory: src-tauri
-        run: cargo check

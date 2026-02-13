@@ -91,7 +91,7 @@ function Section({
   );
 }
 
-export default function Settings() {
+export default function Settings({ onResetOnboarding }: { onResetOnboarding: () => Promise<void> }) {
   const { settings, saving, error, save } = useSettings();
   const [confirmClear, setConfirmClear] = useState(false);
   const [exportPath, setExportPath] = useState<string | null>(null);
@@ -209,6 +209,17 @@ export default function Settings() {
             </select>
           </div>
         </div>
+      </Section>
+
+      <Section title="About">
+        <button
+          onClick={() => {
+            onResetOnboarding().catch(console.error);
+          }}
+          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors py-1"
+        >
+          Re-run onboarding wizard
+        </button>
       </Section>
 
       <div className="rounded-2xl border-2 border-red-200 dark:border-red-900/40 p-5 space-y-3">

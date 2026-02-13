@@ -5,6 +5,7 @@ interface WelcomeStepProps {
   onBack: () => void;
   settings: Partial<UserSettings>;
   onUpdateSettings: (partial: Partial<UserSettings>) => void;
+  onGoToStep?: (step: number) => void;
 }
 
 const RULE_CARDS = [
