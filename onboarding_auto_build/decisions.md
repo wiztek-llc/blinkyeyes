@@ -29,3 +29,27 @@
 - **CSS animations use Tailwind v4 `@utility` directives**: All onboarding animations (`animate-fade-in`, `animate-slide-out-left`, etc.) follow the same pattern as the existing `animate-overlay-enter` — `@keyframes` + `@utility`. This is the required pattern for Tailwind v4 with `@tailwindcss/vite`.
 
 - **Placeholder steps accept full props interface now**: All four step components accept `{ onNext, onBack, settings, onUpdateSettings }` even though placeholders don't use all of them. This ensures Blocks 2, 3, and 4 can fill in step content without changing the Onboarding page's prop-passing code.
+
+## Block 2: Welcome Step (Step 1)
+
+- **Emoji icons for cards and hero**: Used Unicode emoji (laptop, eyes, sparkles, eye) rather than SVG icons or an icon library. The spec explicitly suggested "emoji-based for MVP" and this keeps the bundle at zero additional bytes for icon assets. The emoji render consistently across macOS, Windows 10+, and modern Linux DEs.
+
+- **`text-3xl` for "20" numbers**: The spec suggested `text-4xl` or larger, but with three cards side-by-side at 480px window width, `text-4xl` caused crowding. `text-3xl` (1.875rem / 30px) is still the most visually prominent element per card and provides the right visual weight without overflow.
+
+- **Staggered animations via separate `@utility` classes**: Rather than using inline `animation-delay` styles or a single parameterized animation, created three distinct utility classes (`animate-stagger-in-1`, `animate-stagger-in-2`, `animate-stagger-in-3`) with 0/150/300ms delays. This follows the established Tailwind v4 `@utility` pattern from Block 1 and avoids the need for `style` props in JSX.
+
+- **No `onBack` usage**: The WelcomeStep is step 1 — the back button is hidden by the Onboarding page when `currentStep === 0`. The prop is accepted (interface contract) but intentionally unused. No lint suppression needed since the destructured-but-unused parameter pattern is standard for component prop interfaces.
+
+- **Condensed vertical spacing for viewport fit**: Used `mb-5`/`mb-6` margins and `py-6` padding to ensure all content (hero + 3 cards + context paragraph + CTA) fits within the 640px viewport height without any scrollbar. The spec explicitly requires "No scrollbar needed — all content fits in the viewport."
+
+## Block 5: Enhanced Empty States
+
+- **`sessionStorage` for first-day banner dismissal**: The spec says the banner should "not reappear once dismissed." Using `sessionStorage` means it persists within the app session but reappears after restart. This is acceptable because `is_first_day` is computed from `onboarding_completed_at` being today — the banner naturally disappears after the first day regardless. Adding a backend-persisted `banner_dismissed` field for a one-day-only UI element would be over-engineering.
+
+- **Data-driven empty states over `isFirstDay`-gated**: Most empty states trigger based on data conditions (zero breaks, zero streak) rather than `isFirstDay` alone. This means: (1) after a user completes their first break, the empty states naturally transition to showing real data without any explicit state toggle; (2) returning users who happen to have zero breaks on a given day still see the normal zero-state (not the first-day variant); (3) only `StreakCard` uses `isFirstDay` as an extra condition, because the spec explicitly distinguishes between "first day zero streak" and "broke your streak" messaging.
+
+- **`EmptyState` component uses minimal styling**: No dashed border or background fill — just centered text with an emoji icon. The component is used inside cards that already have their own `bg-white dark:bg-gray-800` background, so adding more background layers would create visual nesting that fights the clean card aesthetic. The `compact` prop reduces spacing for the 2-column grid cards (StreakCard, ComplianceRate) where vertical space is limited.
+
+- **Dashboard uses `useOnboarding` hook directly**: Rather than threading `isFirstDay` through props from `AppShell`, the Dashboard imports and calls `useOnboarding()` itself. This is cleaner than prop drilling through the router, and the hook's `getOnboardingState` call is lightweight (single DB read, already cached in managed state). The Dashboard is the only page that needs this information.
+
+- **Sentence case applied to chart headings**: Changed "Last 7 Days" → "Last 7 days" and "This Week" → "This week" to follow the spec's Appendix A copy guidelines. Consistent with the rest of the onboarding text style.

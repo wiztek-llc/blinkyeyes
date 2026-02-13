@@ -1,19 +1,29 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { skipBreak } from "../lib/commands";
+import { skipBreak, getSettings } from "../lib/commands";
 import type { TimerState } from "../lib/types";
 
 function MiniOverlay() {
   const [timer, setTimer] = useState<TimerState | null>(null);
   const [visible, setVisible] = useState(false);
+  const [isFirstBreak, setIsFirstBreak] = useState(false);
 
   useEffect(() => {
+    // Check if this is the user's first-ever break
+    getSettings()
+      .then((s) => {
+        setIsFirstBreak(s.onboarding_completed && !s.first_break_completed);
+      })
+      .catch(() => {});
+
     const unlistenTick = listen<TimerState>("timer-tick", (event) => {
       setTimer(event.payload);
     });
 
     const unlistenCompleted = listen<TimerState>("break-completed", () => {
       setVisible(false);
+      // After first break completes, it's no longer the first break
+      setIsFirstBreak(false);
     });
 
     const unlistenSkipped = listen<TimerState>("break-skipped", () => {
@@ -22,6 +32,12 @@ function MiniOverlay() {
 
     const unlistenStarted = listen<TimerState>("break-started", () => {
       setVisible(true);
+      // Re-check first break status when a new break starts
+      getSettings()
+        .then((s) => {
+          setIsFirstBreak(s.onboarding_completed && !s.first_break_completed);
+        })
+        .catch(() => {});
     });
 
     return () => {
@@ -106,7 +122,9 @@ function MiniOverlay() {
 
         {/* Eye icon + message */}
         <span className="text-white/90 text-sm select-none">
-          Look away — rest your eyes
+          {isFirstBreak
+            ? "Your first break! Look at something far away..."
+            : "Look away — rest your eyes"}
         </span>
 
         {/* Skip button — de-emphasized */}

@@ -446,6 +446,10 @@ pub fn export_to_csv(conn: &Connection) -> SqlResult<String> {
         ));
     }
 
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| rusqlite::Error::InvalidParameterName(format!("dir error: {}", e)))?;
+    }
     std::fs::write(&path, csv)
         .map_err(|e| rusqlite::Error::InvalidParameterName(format!("write error: {}", e)))?;
 

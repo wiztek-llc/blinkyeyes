@@ -1,14 +1,34 @@
 import type { AnalyticsSummary } from "../lib/types";
+import EmptyState from "./EmptyState";
 
 export default function StreakCard({
   analytics,
   dailyGoal,
+  isFirstDay,
 }: {
   analytics: AnalyticsSummary;
   dailyGoal: number;
+  isFirstDay?: boolean;
 }) {
   const todayBreaks = analytics.today.breaks_completed;
   const goalProgress = Math.min(todayBreaks / dailyGoal, 1);
+  const hasNoStreak = analytics.current_day_streak === 0;
+
+  if (hasNoStreak && isFirstDay) {
+    return (
+      <div className="rounded-2xl bg-white dark:bg-gray-800 p-5">
+        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+          Streak
+        </h3>
+        <EmptyState
+          icon="🔥"
+          title="Your streak starts today!"
+          description="Complete breaks every day to build a streak. Day one begins now."
+          compact
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl bg-white dark:bg-gray-800 p-5 space-y-3">

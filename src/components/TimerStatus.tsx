@@ -27,7 +27,13 @@ function phaseLabel(phase: string): string {
   }
 }
 
-export default function TimerStatus({ timer }: { timer: TimerState | null }) {
+export default function TimerStatus({
+  timer,
+  isFirstDay,
+}: {
+  timer: TimerState | null;
+  isFirstDay?: boolean;
+}) {
   if (!timer) {
     return (
       <div className="rounded-2xl bg-white dark:bg-gray-800 p-6 text-center">
@@ -102,6 +108,13 @@ export default function TimerStatus({ timer }: { timer: TimerState | null }) {
         {timer.breaks_completed_today} break
         {timer.breaks_completed_today !== 1 ? "s" : ""} completed today
       </p>
+
+      {isFirstDay && timer.breaks_completed_today === 0 && !isBreaking && (
+        <p className="text-xs text-blue-400 dark:text-blue-400/70">
+          Your first break is coming up — you'll see a gentle reminder when it's
+          time.
+        </p>
+      )}
     </div>
   );
 }
