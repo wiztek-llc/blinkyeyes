@@ -37,8 +37,7 @@ pub fn complete_onboarding(settings: &mut UserSettings) {
 /// Add a tooltip_id to the seen list if not already present.
 /// Returns the updated list.
 pub fn mark_tooltip_seen(settings: &mut UserSettings, tooltip_id: &str) -> Vec<String> {
-    let mut seen: Vec<String> =
-        serde_json::from_str(&settings.tooltips_seen).unwrap_or_default();
+    let mut seen: Vec<String> = serde_json::from_str(&settings.tooltips_seen).unwrap_or_default();
     if !seen.contains(&tooltip_id.to_string()) {
         seen.push(tooltip_id.to_string());
     }

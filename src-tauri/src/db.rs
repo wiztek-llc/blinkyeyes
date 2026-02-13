@@ -730,4 +730,86 @@ mod tests {
         let settings = load_settings(&conn).unwrap();
         assert_eq!(settings.work_interval_minutes, 20);
     }
+
+    #[test]
+    fn test_onboarding_defaults_on_fresh_db() {
+        let conn = setup_test_db();
+        let settings = load_settings(&conn).unwrap();
+        assert!(!settings.onboarding_completed);
+        assert!(settings.onboarding_completed_at.is_none());
+        assert_eq!(settings.tooltips_seen, "[]");
+        assert!(!settings.first_break_completed);
+    }
+
+    #[test]
+    fn test_onboarding_auto_complete_for_existing_users() {
+        // Simulate an existing database that only has migration 001 applied
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA journal_mode=WAL;").unwrap();
+        conn.execute_batch("PRAGMA foreign_keys=ON;").unwrap();
+
+        // Apply only migration 001 manually
+        conn.execute_batch(MIGRATION_001_SQL).unwrap();
+        conn.execute(
+            "INSERT INTO _migrations (name) VALUES (?1)",
+            params!["001_initial"],
+        )
+        .unwrap();
+
+        // Insert a break record (simulating an existing user)
+        let now = chrono::Utc::now().timestamp_millis();
+        conn.execute(
+            "INSERT INTO break_records (started_at, duration_seconds, completed, skipped, preceding_work_seconds) VALUES (?1, 20, 1, 0, 1200)",
+            params![now],
+        )
+        .unwrap();
+
+        // Now run all migrations (should apply 002 and auto-complete)
+        run_migrations(&conn).unwrap();
+
+        let settings = load_settings(&conn).unwrap();
+        assert!(
+            settings.onboarding_completed,
+            "onboarding should be auto-completed for existing users"
+        );
+        assert!(
+            settings.first_break_completed,
+            "first_break should be auto-completed for existing users"
+        );
+        assert!(
+            settings.onboarding_completed_at.is_some(),
+            "onboarding_completed_at should be set"
+        );
+    }
+
+    #[test]
+    fn test_onboarding_not_auto_completed_for_fresh_install() {
+        // Fresh database — no break records
+        let conn = setup_test_db();
+        let settings = load_settings(&conn).unwrap();
+        assert!(
+            !settings.onboarding_completed,
+            "onboarding should NOT be auto-completed on fresh install"
+        );
+        assert!(!settings.first_break_completed);
+    }
+
+    #[test]
+    fn test_save_load_onboarding_fields_roundtrip() {
+        let conn = setup_test_db();
+        let mut settings = load_settings(&conn).unwrap();
+
+        settings.onboarding_completed = true;
+        settings.onboarding_completed_at = Some(1700000000000);
+        settings.tooltips_seen = r#"["streak","timer"]"#.to_string();
+        settings.first_break_completed = true;
+
+        save_settings(&conn, &settings).unwrap();
+        let loaded = load_settings(&conn).unwrap();
+
+        assert!(loaded.onboarding_completed);
+        assert_eq!(loaded.onboarding_completed_at, Some(1700000000000));
+        assert_eq!(loaded.tooltips_seen, r#"["streak","timer"]"#);
+        assert!(loaded.first_break_completed);
+    }
 }

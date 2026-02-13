@@ -5,10 +5,10 @@ mod commands;
 mod db;
 mod idle;
 mod notifications;
+mod onboarding;
 mod overlay;
 mod settings;
 pub mod state;
-mod onboarding;
 mod timer;
 mod tray;
 

@@ -1,6 +1,6 @@
 use crate::state::{
-    AnalyticsSummary, AppState, BreakRecord, DailyStats, DbConnection, OnboardingState,
-    TimerPhase, TimerState, UserSettings,
+    AnalyticsSummary, AppState, BreakRecord, DailyStats, DbConnection, OnboardingState, TimerPhase,
+    TimerState, UserSettings,
 };
 use crate::{analytics, autostart, db, onboarding, settings, timer};
 use tauri::{AppHandle, Emitter, Manager, State};
